@@ -1,0 +1,276 @@
+/*------------------------------------------------------------------------------
+
+									ChocolateRush
+
+------------------------------------------------------------------------------*/
+
+#module
+#include "user32.as"
+
+/*文字を中央に表示（使用例：cmes "hogehoge", 0, 640, 0, 480, 0）*/
+#deffunc cmes str ctext, int cx, int cy, int cx2, int cy2, int redraw_exist
+	RECT = cx, cy, cx2, cy2
+	DrawText@ hdc, ctext, -1, varptr(RECT), $01
+	
+	if redraw_exist = 0 : redraw 1
+	return
+
+/*半透明色表示命令（機能はboxfaと同じ）*/
+#deffunc sboxf int depth, int ax, int ay, int bx, int by
+	pdx = ax, bx, bx, ax
+	pdy = ay, ay, by, by
+	gmode 3,,,depth
+	gsquare -1,pdx, pdy
+	return
+#global
+
+*buffering
+	celload "i/logo.png", 1
+	celload "i/choco1.png", 2
+	celload "i/choco2.png", 3
+	celload "i/choco3.png", 4
+	celload "i/choco4.png", 5
+	celload "i/choco5.png", 6
+	celload "i/choco6.png", 7
+
+	celload "i/cardboard.png", 8
+	celload "i/koto.png", 9
+	celload "i/usbmem.png", 10
+	celload "i/wallet.png", 11
+
+	celload "i/player.png", 12
+
+	celload "i/cloud.png", 13
+
+	windowx = ginfo(10)
+	windowy = ginfo(11)
+
+	playerx = windowx/2 - (128/2)
+
+	title "ChocolateRush"
+
+*menu
+	color 0, 162, 232   : boxf 0, 0, windowx, windowy-100
+	color 255, 255, 255 : boxf 0, windowy-99, windowx, windowy
+
+	pos windowx/2-(374/2), 100 : gmode 2 : gcopy 1, 0, 0, 374, 63
+
+	color 255, 255, 255
+	font "Meiryo", 18
+	cmes "音量注意", 0,300, windowx, windowy
+
+	objsize 100, 20
+	pos windowx/2-50, windowy-150 : button "Ready?", *main
+
+	stop
+
+*main
+	dim imgSizeX, 10
+	dim imgSizeY, 10
+	
+	repeat 10
+		gsel (cnt+2)
+		imgSizeX(cnt) = ginfo(12)
+		imgSizeY(cnt) = ginfo(13)
+
+	loop
+
+	gsel 0
+
+	clrobj
+
+	point = 0
+	choco = 0
+	ibutsu = 0
+	
+	dim objectImg, 30
+	dim objectX, 30
+	dim objectY, 30
+	dim objectStat, 30
+
+	repeat 30
+		objectStat(cnt) = 0
+		objectX(cnt) = 0
+		objectY(cnt) = -100
+	loop
+
+	activeObj = 0
+	nextobj = 0
+
+	dim cloudX, 5
+	dim cloudY, 5
+	dim cloudStat, 5
+
+	gsel 13
+		cloudSizeX = ginfo(12)
+		cloudSizeY = ginfo(13)
+
+	gsel 0
+
+	repeat 5
+		cloudX(cnt) = -cloudSizeX
+		cloudY(cnt) = 0
+		cloudStat(cnt) = 0
+	loop
+
+	activeCloud = 0
+
+	mmload "bgm/Sweet_time_Disco.mp3"
+	mmplay
+
+	randomize
+
+	mesPosX = -1
+	mesPosY = -1
+	mesStat = -1
+	
+	gmode 2
+	repeat
+		redraw 0
+
+		getkey key, 37
+			if key = 1 : playerx -= 4
+		getkey key, 39
+			if key = 1 : playerx += 4
+
+		if playerx < 0           : playerx = 0
+		if playerx > windowx-128 : playerx = windowx-128
+
+		if rnd(100) = 0 and activeObj < 30 {
+			objectStat(nextobj) = 1
+
+			objectImg(nextobj) = rnd(10)+2
+			objectX(nextobj) = rnd(windowx-80)+26
+			objectY(nextobj) = -imgSizeY(objectImg(nextobj)-2)
+
+			activeObj ++
+			nextobj ++
+
+			if nextobj > 30 {
+				nextobj = 0
+			}
+		}
+
+		if rnd(500) = 0 and activeCloud < 5 {
+			cloudStat(nextcloud) = 1
+
+			cloudX(nextcloud) = -cloudSizeX
+			cloudY(nextcloud) = rnd(windowy-300)
+
+			activeCloud ++
+			nextcloud ++
+
+			if nextcloud > 5 {
+				nextcloud = 0
+			}
+		}
+			
+		color 0, 162, 232   : boxf 0, 0, windowx, windowy-100
+		color 255, 255, 255 : boxf 0, windowy-99, windowx, windowy
+
+		pos playerx, windowy-155 : gcopy 12, 0, 0, 128, 155
+
+		lcnt = cnt
+
+		repeat 5
+			if cloudStat(cnt) = 1 {
+				gmode 2
+				pos cloudX(cnt), cloudY(cnt) : gcopy 13, 0, 0, cloudSizeX, cloudSizeY
+
+				cloudX(cnt) ++
+
+				if cloudX(cnt) > windowx {
+					cloudStat(cnt) = 0
+					activeCloud --
+				}
+			}
+		loop
+
+		repeat 30
+			if objectStat(cnt) = 1 {
+				gmode 2
+				pos objectX(cnt), objectY(cnt) : gcopy objectImg(cnt), 0, 0, imgSizeX(objectImg(cnt)-2), imgSizeY(objectImg(cnt)-2)
+
+				if lcnt < 6850 {
+					objectY(cnt)+=2
+				} else {
+					objectY(cnt)+=4
+				}
+
+				if objectX(cnt)+(imgSizeX(objectImg(cnt)-2)/2) >= playerx+26 and objectX(cnt)+(imgSizeX(objectImg(cnt)-2)/2) <= playerx+128-20 and objectY(cnt)+(imgSizeY(objectImg(cnt)-2)/2) >= windowy-130 and objectY(cnt)+(imgSizeY(objectImg(cnt)-2)/2) <= windowy-50 {
+					if objectImg(cnt) >= 2 and objectImg(cnt) <= 5 {
+						add_point = 2
+						choco ++
+					} else : if objectImg(cnt) = 6 {
+						add_point = 1
+						choco ++
+					} else : if objectImg(cnt) = 7 {
+						add_point = 3
+						choco ++
+					} else {
+						add_point = -2
+						ibutsu ++
+					}
+					
+					point += add_point
+					objectStat(cnt) = 0
+					activeObj --
+
+					mesPosX = playerx-10
+					mesPosY = windowy-155-20
+					mesStat = 0
+					
+				} else : if objectY(cnt) > windowx {
+					objectStat(cnt) = 0
+					activeObj --
+				}
+
+			}
+		loop
+
+		if mesStat > -1 {
+			mesStat++
+
+			font "Meiryo", 14, 1
+
+			if add_point > 0 {
+				color 0, 255, 0
+				pos mesPosX, mesPosY : mes "+"+add_point
+			} else {
+				color 255, 0, 0
+				pos mesPosX, mesPosY : mes add_point
+			}
+
+			if mesStat > 100 {
+				mesStat = -1
+			}
+		}
+
+		time = 98 - (cnt/100)
+
+		color 255, 255, 255 : font "Meiryo", 16, 1
+		pos 10, 10 : mes "Point "+point+"\nのこり "+time+"秒"
+
+		redraw 1
+
+		if cnt > 9850 {
+			break
+		}
+		
+		await 10
+	loop
+
+*result
+	color 0, 0, 0
+	sboxf 150, 0, 0, windowx, windowy
+
+	color 255, 255, 255
+
+	mmstop
+
+	wait 100
+
+	cmes "結果発表\n\nもらったチョコレート "+choco+"個\nもらった異物 "+ibutsu+"個\n\nポイント "+point+"点", 0, 150, windowx, windowy
+
+	objsize 100, 20
+	pos windowx/2-50, windowy-150 : button "もう一度遊ぶ", *main
